@@ -1,0 +1,2176 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>نظام فواتير مورتي ديزاين | A5</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Cairo Arabic Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <!-- jsPDF & SheetJS (XLSX) for Direct PDF & Excel Generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Cairo', Tahoma, 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #eef2ff 0%, #f5f3ff 50%, #ecfeff 100%);
+      color: #0f172a;
+      min-height: 100vh;
+    }
+
+    /* Desktop workspace order: invoice on the left, catalog on the right. */
+    #mainWorkspace { direction: ltr; }
+    #mainWorkspace > .workspace-panel { direction: rtl; }
+
+    /* A5 Paper Sheet Dimensions (148mm x 210mm) */
+    .a5-sheet {
+      width: 100%;
+      max-width: 148mm;
+      min-height: 210mm;
+      background: #ffffff;
+      box-sizing: border-box;
+      position: relative;
+      transition: all 0.25s ease;
+    }
+
+    /* Hide native browser number spinners */
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type="number"] {
+      -moz-appearance: textfield;
+    }
+
+    /* =====================================================================
+       THEME 1: ECO INK-SAVER (B&W Monochrome, Colored Logo Preserved)
+       ===================================================================== */
+    .theme-eco {
+      border: 1.5px solid #000000;
+      color: #000000;
+    }
+    .theme-eco .top-accent-bar {
+      background: #000000 !important;
+      height: 4px !important;
+    }
+    .theme-eco .logo-frame {
+      border: 1.5px solid #000000 !important;
+      background: #ffffff !important;
+    }
+    .theme-eco .brand-title {
+      color: #000000 !important;
+    }
+    .theme-eco .brand-subtitle {
+      color: #262626 !important;
+    }
+    .theme-eco .meta-card {
+      background: #ffffff !important;
+      border: 1.5px solid #000000 !important;
+      color: #000000 !important;
+    }
+    .theme-eco .meta-divider {
+      border-color: #000000 !important;
+    }
+    .theme-eco .section-divider {
+      border-color: #000000 !important;
+    }
+    .theme-eco .customer-card {
+      background: #ffffff !important;
+      border: 1.5px solid #000000 !important;
+    }
+    .theme-eco .items-table {
+      border: 1.5px solid #000000 !important;
+    }
+    .theme-eco .items-table thead tr {
+      background: #ffffff !important;
+      color: #000000 !important;
+      border-bottom: 2px solid #000000 !important;
+    }
+    .theme-eco .items-table th,
+    .theme-eco .items-table td {
+      border-color: #000000 !important;
+      color: #000000 !important;
+    }
+    .theme-eco .items-table tbody tr:nth-child(even) {
+      background: #ffffff !important;
+    }
+    .theme-eco .unit-toggle-btn {
+      background: #ffffff !important;
+      border: 1px solid #000000 !important;
+      color: #000000 !important;
+    }
+    .theme-eco .notes-card {
+      background: #ffffff !important;
+      border: 1.5px solid #000000 !important;
+    }
+    .theme-eco .totals-card {
+      background: #ffffff !important;
+      border: 1.5px solid #000000 !important;
+    }
+    .theme-eco .grand-total-bar {
+      background: #ffffff !important;
+      color: #000000 !important;
+      border-top: 2px solid #000000 !important;
+      border-radius: 0 !important;
+    }
+    .theme-eco .grand-total-amount {
+      color: #000000 !important;
+    }
+
+    /* =====================================================================
+       THEME 2: LUXURY COLORFUL EDITION (Royal Indigo, Purple & Gold)
+       ===================================================================== */
+    .theme-luxury {
+      border: 1px solid #c7d2fe;
+      box-shadow: 0 20px 45px -15px rgba(49, 46, 129, 0.22);
+    }
+    .theme-luxury .top-accent-bar {
+      background: linear-gradient(90deg, #f59e0b 0%, #4f46e5 50%, #1e1b4b 100%);
+      height: 7px;
+    }
+    .theme-luxury .logo-frame {
+      border: 1.5px solid #c7d2fe;
+      background: #ffffff;
+    }
+    .theme-luxury .brand-title {
+      color: #1e1b4b;
+    }
+    .theme-luxury .brand-subtitle {
+      color: #4338ca;
+    }
+    .theme-luxury .meta-card {
+      background: linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%);
+      border: 1.5px solid #818cf8;
+      color: #1e1b4b;
+    }
+    .theme-luxury .meta-divider {
+      border-color: #c7d2fe;
+    }
+    .theme-luxury .section-divider {
+      border-color: #c7d2fe;
+    }
+    .theme-luxury .customer-card {
+      background: #f8fafc;
+      border: 1.5px solid #c7d2fe;
+    }
+    .theme-luxury .items-table {
+      border: 1.5px solid #a5b4fc;
+    }
+    .theme-luxury .items-table thead tr {
+      background: linear-gradient(90deg, #3730a3 0%, #1e1b4b 100%);
+      color: #ffffff;
+    }
+    .theme-luxury .items-table th {
+      border-color: #4338ca;
+    }
+    .theme-luxury .items-table td {
+      border-color: #cbd5e1;
+      color: #0f172a;
+    }
+    .theme-luxury .items-table tbody tr:nth-child(even) {
+      background: #f8fafc;
+    }
+    .theme-luxury .unit-toggle-btn {
+      background: #eef2ff;
+      border: 1px solid #a5b4fc;
+      color: #312e81;
+    }
+    .theme-luxury .notes-card {
+      background: #fffbeb;
+      border: 1.5px solid #fde68a;
+    }
+    .theme-luxury .totals-card {
+      background: #eef2ff;
+      border: 1.5px solid #a5b4fc;
+    }
+    .theme-luxury .grand-total-bar {
+      background: linear-gradient(90deg, #4338ca 0%, #1e1b4b 100%);
+      color: #ffffff;
+    }
+    .theme-luxury .grand-total-amount {
+      color: #fcd34d;
+    }
+
+    /* Direct Browser Print Rules for A5 */
+    @page {
+      size: A5 portrait;
+      margin: 6mm;
+    }
+    @media print {
+      body {
+        background: #ffffff !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .print-wrapper {
+        display: block !important;
+        padding: 0 !important;
+        margin: 0 auto !important;
+        width: 136mm !important;
+      }
+      .a5-sheet {
+        width: 136mm !important;
+        max-width: 136mm !important;
+        min-height: auto !important;
+        box-shadow: none !important;
+        margin: 0 auto !important;
+        padding: 4mm !important;
+      }
+      input, textarea {
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+      }
+    }
+  </style>
+</head>
+<body class="pb-12">
+
+  <!-- Toast Container -->
+  <div id="toastContainer" class="fixed bottom-4 left-4 z-50 flex flex-col gap-2 pointer-events-none no-print"></div>
+
+  <!-- Top Control Navbar -->
+  <header class="sticky top-0 z-40 bg-gradient-to-r from-indigo-950 via-purple-900 to-indigo-900 text-white shadow-xl border-b border-indigo-700/60 no-print">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
+      <!-- App Identity -->
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-400 to-orange-500 text-indigo-950 font-extrabold flex items-center justify-center shadow">
+          MD
+        </div>
+        <div>
+          <h1 class="text-sm sm:text-base font-extrabold tracking-tight leading-tight">
+            نظام فواتير مورتي ديزاين <span class="text-amber-300 text-xs font-bold">(A5 Pro)</span>
+          </h1>
+          <p class="text-[11px] text-indigo-200 hidden sm:block">يعمل محلياً بالكامل • تصدير PDF عربي متصل • Excel & Word & PNG</p>
+        </div>
+      </div>
+
+      <!-- Theme Switcher (Eco B&W vs Luxury Colored) -->
+      <div class="flex items-center bg-indigo-950/80 p-1 rounded-xl border border-indigo-700/70">
+        <button
+          id="btnThemeEco"
+          onclick="setInvoiceTheme('eco')"
+          class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-white text-slate-900 shadow"
+        >
+          <span>🖨️</span>
+          <span>توفير الحبر (أبيض وأسود)</span>
+        </button>
+        <button
+          id="btnThemeLuxury"
+          onclick="setInvoiceTheme('luxury')"
+          class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 text-indigo-200 hover:text-white"
+        >
+          <span>✨</span>
+          <span>النسخة الفاخرة (ملوّن)</span>
+        </button>
+      </div>
+
+      <!-- Export & Print Actions -->
+      <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+        <button
+          onclick="newInvoice()"
+          class="px-2.5 py-1.5 rounded-xl bg-indigo-800/80 hover:bg-indigo-700 text-indigo-100 border border-indigo-600 text-xs font-bold transition"
+          title="تفريغ الفاتورة وزيادة الرقم التسلسلي"
+        >
+          + فاتورة جديدة
+        </button>
+        <button
+          onclick="exportToPDF()"
+          class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white text-xs font-extrabold shadow-md transition flex items-center gap-1"
+        >
+          <span>📄</span>
+          <span>حفظ PDF (A5)</span>
+        </button>
+        <button
+          onclick="exportToImage()"
+          class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700 text-white text-xs font-extrabold shadow-md transition flex items-center gap-1"
+          title="حفظ الفاتورة كصورة PNG عالية الجودة"
+        >
+          <span>🖼️</span>
+          <span>حفظ صورة</span>
+        </button>
+        <button
+          onclick="window.print()"
+          class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-xs font-extrabold shadow-md transition flex items-center gap-1"
+        >
+          <span>🖨️</span>
+          <span>طباعة</span>
+        </button>
+        <button
+          onclick="exportToExcel()"
+          class="px-2.5 py-1.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 text-emerald-200 border border-emerald-700 text-xs font-bold transition"
+        >
+          Excel
+        </button>
+        <button
+          onclick="exportToWord()"
+          class="px-2.5 py-1.5 rounded-xl bg-sky-950/80 hover:bg-sky-900 text-sky-200 border border-sky-700 text-xs font-bold transition"
+        >
+          Word
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace Layout -->
+  <main id="mainWorkspace" class="max-w-7xl mx-auto px-3 sm:px-6 pt-5 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+    <!-- LEFT/CENTER COLUMN: A5 INVOICE SHEET -->
+    <div class="workspace-panel lg:col-span-7 xl:col-span-8 flex flex-col items-center print-wrapper">
+      <!-- Mode Indicator Banner -->
+      <div id="modeStatusBanner" class="w-full max-w-[148mm] mb-2.5 px-3.5 py-2 rounded-xl bg-white/90 border border-slate-300 shadow-sm flex items-center justify-between text-xs no-print">
+        <span class="font-bold text-slate-700">الوضع النشط حالياً للحفظ والطباعة:</span>
+        <span id="modeStatusBadge" class="px-2.5 py-0.5 rounded-lg bg-slate-900 text-white font-bold">
+          🖨️ وضع توفير الحبر (أبيض وأسود + لوجو ملوّن)
+        </span>
+      </div>
+
+      <!-- A5 INVOICE CONTAINER -->
+      <div id="invoiceSheet" class="a5-sheet theme-eco rounded-2xl overflow-hidden shadow-xl">
+        <!-- Top Bar -->
+        <div class="top-accent-bar w-full"></div>
+
+        <div class="p-4 sm:p-5 flex flex-col justify-between min-h-[206mm]">
+          <div>
+            <!-- HEADER: Logo + Brand Info + Invoice Meta -->
+            <div class="flex items-start justify-between gap-2.5 pb-3 border-b-2 section-divider">
+              <!-- Right Side: Logo & Brand -->
+              <div class="flex items-start gap-2.5 flex-1 min-w-0">
+                <!-- Logo Upload Box -->
+                <label
+                  for="logoInput"
+                  class="logo-frame w-28 h-16 sm:w-32 sm:h-[72px] rounded-xl flex items-center justify-center shrink-0 cursor-pointer overflow-hidden relative group"
+                  style="width:112px;height:64px;"
+                  title="اضغط لتغيير اللوجو"
+                >
+                  <img id="brandLogoImg" src="" alt="Logo" class="max-w-full max-h-full w-auto h-auto object-contain hidden p-1" />
+                  <div id="defaultLogoBadge" class="w-full h-full bg-gradient-to-br from-indigo-950 via-indigo-700 to-sky-500 text-white flex flex-col items-center justify-center">
+                    <span class="text-base font-extrabold leading-none">MD</span>
+                    <span class="text-[8px] tracking-wider text-amber-300 font-bold mt-0.5">DESIGN</span>
+                  </div>
+                  <span class="absolute inset-0 bg-black/55 text-white text-[9px] font-bold flex items-center justify-center opacity-0 group-hover:opacity-100 transition no-print">
+                    تغيير
+                  </span>
+                </label>
+                <input type="file" id="logoInput" accept="image/*" class="hidden" onchange="handleLogoUpload(event)" />
+
+                <!-- Brand Name & Contact -->
+                <div class="flex-1 min-w-0">
+                  <textarea
+                    id="brandNameInput"
+                    rows="1"
+                    oninput="autoGrow(this); saveBrandSettings();"
+                    class="brand-title w-full text-sm sm:text-base font-extrabold bg-transparent resize-none focus:outline-none leading-snug"
+                    placeholder="اسم الشركة أو المطبعة"
+                  >مورتي ديزاين | Morty Design</textarea>
+                  <input
+                    type="text"
+                    id="brandSubtitleInput"
+                    oninput="saveBrandSettings()"
+                    class="brand-subtitle w-full text-[11px] font-semibold bg-transparent focus:outline-none"
+                    value="لخدمات التصميم والطباعة والدعاية"
+                  />
+                  <input
+                    type="text"
+                    id="brandContactInput"
+                    oninput="saveBrandSettings()"
+                    class="w-full text-[10.5px] text-slate-600 bg-transparent focus:outline-none mt-0.5"
+                    value="القاهرة - مصر | هاتف: 01000000000"
+                  />
+                </div>
+              </div>
+
+              <!-- Left Side: Invoice Number & Editable Issue Date -->
+              <div class="meta-card w-36 sm:w-40 shrink-0 rounded-xl p-2 text-[11px]">
+                <div class="font-extrabold text-center text-xs pb-1 mb-1 border-b meta-divider">
+                  فاتورة مبيعات
+                </div>
+                <div class="flex items-center justify-between gap-1 mb-1">
+                  <span class="font-bold">رقم:</span>
+                  <input
+                    type="text"
+                    id="invoiceNumberInput"
+                    class="w-20 text-left font-bold bg-transparent focus:outline-none"
+                    value="INV-1001"
+                  />
+                </div>
+                <div class="flex items-center justify-between gap-1">
+                  <span class="font-bold">التاريخ:</span>
+                  <input
+                    type="date"
+                    id="invoiceDateInput"
+                    class="w-24 text-left font-bold bg-transparent focus:outline-none text-[10.5px]"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- CUSTOMER INFO BAR + SAVED CUSTOMER SHORTCUTS -->
+            <div class="customer-card my-2.5 px-3 py-2 rounded-xl flex flex-col gap-2 text-xs">
+              <div class="flex flex-wrap items-center gap-2">
+                <div class="flex items-center gap-1.5 flex-1 min-w-[145px]">
+                  <span class="font-bold shrink-0">العميل:</span>
+                  <input
+                    type="text"
+                    id="customerNameInput"
+                    oninput="clearSavedCustomerSelection()"
+                    placeholder="اكتب اسم العميل..."
+                    class="w-full min-w-0 bg-transparent focus:outline-none font-normal"
+                  />
+                </div>
+                <div class="flex items-center gap-1.5 w-36 sm:w-40">
+                  <span class="font-bold shrink-0">الهاتف:</span>
+                  <input
+                    type="text"
+                    id="customerPhoneInput"
+                    oninput="clearSavedCustomerSelection()"
+                    placeholder="رقم الهاتف..."
+                    class="w-full min-w-0 bg-transparent focus:outline-none font-normal"
+                  />
+                </div>
+                <button type="button" onclick="saveCurrentCustomer()" class="shrink-0 px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold transition no-print" title="حفظ بيانات العميل للمرات القادمة">💾 حفظ العميل</button>
+              </div>
+              <div class="flex flex-wrap items-center gap-1.5 no-print">
+                <span class="font-bold text-slate-600 shrink-0">عميل محفوظ:</span>
+                <select id="savedCustomerSelect" onchange="loadSavedCustomer(this.value)" class="flex-1 min-w-[150px] px-2 py-1 rounded-lg bg-white/80 border border-slate-300 text-[10px] focus:outline-none focus:border-indigo-400">
+                  <option value="">اختار عميل محفوظ...</option>
+                </select>
+                <button type="button" onclick="deleteSelectedCustomer()" class="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-[10px] font-bold transition" title="حذف العميل المحدد من القائمة">حذف</button>
+              </div>
+            </div>
+
+            <!-- ITEMS TABLE -->
+            <div class="overflow-hidden rounded-xl">
+              <table class="items-table w-full border-collapse text-xs">
+                <thead>
+                  <tr>
+                    <th class="py-2 px-2 text-right font-bold w-[38%]">الصنف</th>
+                    <th class="py-2 px-1 text-center font-bold w-[16%]">الكمية</th>
+                    <th class="py-2 px-1 text-center font-bold w-[16%]">العدد</th>
+                    <th class="py-2 px-1 text-center font-bold w-[14%]">السعر</th>
+                    <th class="py-2 px-1 text-center font-bold w-[16%]">الإجمالي</th>
+                  </tr>
+                </thead>
+                <tbody id="invoiceTableBody">
+                  <!-- Dynamic Rows Rendered Here -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Add Row Button -->
+            <div class="mt-2 flex items-center justify-between no-print">
+              <button
+                onclick="addInvoiceRow()"
+                class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition flex items-center gap-1"
+              >
+                <span>+</span>
+                <span>إضافة صنف جديد للفاتورة</span>
+              </button>
+              <span class="text-[11px] text-slate-500">يمكنك التبديل بين (قطعة / دستة) بالضغط على زر الكمية</span>
+            </div>
+          </div>
+
+          <!-- FOOTER: NOTES & TOTALS -->
+          <div class="mt-4 pt-2">
+            <div class="grid grid-cols-12 gap-2.5 items-stretch">
+              <!-- Notes Box -->
+              <div class="col-span-7 notes-card rounded-xl p-2.5 flex flex-col justify-between text-[11px]">
+                <div>
+                  <div class="font-bold mb-1">ملاحظات:</div>
+                  <textarea
+                    id="invoiceNotesInput"
+                    rows="2"
+                    class="w-full bg-transparent resize-none focus:outline-none leading-relaxed text-slate-700"
+                  >شكراً لتعاملكم مع مورتي ديزاين.</textarea>
+                </div>
+                <div class="pt-1.5 mt-1.5 border-t border-slate-300 text-[10px] text-slate-500">
+                  توقيع المستلم: ........................................
+                </div>
+              </div>
+
+              <!-- Totals Box -->
+              <div class="col-span-5 totals-card rounded-xl p-2.5 flex flex-col justify-between text-xs">
+                <div class="space-y-1.5">
+                  <div class="flex items-center justify-between">
+                    <span class="font-bold">المجموع:</span>
+                    <span id="subtotalDisplay" class="font-bold">0.00 ج.م</span>
+                  </div>
+                  <div class="flex items-center justify-between gap-1">
+                    <span class="font-bold">الخصم:</span>
+                    <input
+                      type="number"
+                      id="discountInput"
+                      min="0"
+                      step="any"
+                      value="0"
+                      oninput="recalculateTotals()"
+                      class="w-16 text-left font-normal bg-white/70 border border-slate-300 rounded px-1 py-0.5 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div class="grand-total-bar mt-2 px-2.5 py-2 rounded-lg flex items-center justify-between font-extrabold text-xs sm:text-sm">
+                  <span>الإجمالي:</span>
+                  <span id="grandTotalDisplay" class="grand-total-amount">0.00 ج.م</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bottom Sheet Stamp -->
+            <div class="mt-2.5 pt-1.5 border-t border-slate-200 flex items-center justify-between text-[10px] text-slate-500">
+              <span id="footerBrandCopy" class="font-bold">مورتي ديزاين | Morty Design</span>
+              <span>نظام الفواتير السريع (A5)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: SAVED ITEMS CATALOG & JSON BACKUP -->
+    <aside class="workspace-panel lg:col-span-5 xl:col-span-4 space-y-4 no-print">
+
+      <!-- Saved Items Catalog Card -->
+      <div class="bg-white/95 backdrop-blur rounded-2xl shadow-lg border border-indigo-100 p-4">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <span class="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">📦</span>
+            <div>
+              <h2 class="text-sm font-extrabold text-indigo-950">قاعدة الأصناف المحفوظة</h2>
+              <p class="text-[11px] text-slate-500">احفظ أصنافك وأضفها للفاتورة بضغطة واحدة</p>
+            </div>
+          </div>
+          <span id="catalogCountBadge" class="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 text-xs font-bold">0</span>
+        </div>
+
+        <!-- Add New Preset Item Form -->
+        <form onsubmit="saveNewCatalogItem(event)" class="bg-gradient-to-br from-indigo-50 to-purple-50 p-3 rounded-xl border border-indigo-200/70 space-y-2 mb-3">
+          <input
+            type="text"
+            id="presetNameInput"
+            required
+            placeholder="اسم الصنف (مثال: نوتة سلك A5)"
+            class="w-full px-3 py-1.5 rounded-lg bg-white border border-indigo-200 text-xs focus:outline-none focus:border-indigo-500"
+          />
+          <select
+            id="presetCategoryInput"
+            required
+            class="w-full px-2.5 py-1.5 rounded-lg bg-white border border-indigo-200 text-xs font-bold text-slate-700 focus:outline-none"
+          >
+            <option value="" selected disabled>اختر فئة المنتج</option>
+            <option value="نوت بوك وكراسات">نوت بوك وكراسات</option>
+            <option value="استيكرات">استيكرات</option>
+            <option value="لافتات وديكورات">لافتات وديكورات</option>
+            <option value="مطبوعات ورقية">مطبوعات ورقية</option>
+            <option value="أدوات مكتبية">أدوات مكتبية</option>
+            <option value="مجات">مجات</option>
+            <option value="تيشيرتات">تيشيرتات</option>
+            <option value="أخرى">أخرى</option>
+          </select>
+          <div class="grid grid-cols-2 gap-2">
+            <select
+              id="presetUnitInput"
+              class="px-2.5 py-1.5 rounded-lg bg-white border border-indigo-200 text-xs font-bold text-slate-700 focus:outline-none"
+            >
+              <option value="قطعة">قطعة</option>
+              <option value="دستة">دستة</option>
+            </select>
+            <input
+              type="number"
+              id="presetPriceInput"
+              required
+              min="0"
+              step="any"
+              placeholder="السعر (ج.م)"
+              class="px-3 py-1.5 rounded-lg bg-white border border-indigo-200 text-xs focus:outline-none focus:border-indigo-500"
+            />
+          </div>
+          <button
+            type="submit"
+            class="w-full py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-extrabold shadow transition"
+          >
+            + حفظ الصنف في القائمة
+          </button>
+        </form>
+
+        <!-- Search Saved Items -->
+        <input
+          type="text"
+          id="catalogSearchInput"
+          oninput="renderCatalogList()"
+          placeholder="🔍 ابحث في الأصناف المحفوظة..."
+          class="w-full px-3 py-1.5 mb-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs focus:outline-none focus:border-indigo-400"
+        />
+
+        <!-- Catalog Filters: product category and selling unit -->
+        <div class="grid grid-cols-2 gap-2 mb-2">
+          <select
+            id="catalogCategoryFilter"
+            onchange="renderCatalogList()"
+            class="w-full min-w-0 px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 text-[11px] font-bold text-slate-700 focus:outline-none focus:border-indigo-400"
+            aria-label="فلترة حسب فئة المنتج"
+          >
+            <option value="all">كل الفئات</option>
+            <option value="غير مصنف">غير مصنف</option>
+            <option value="نوت بوك وكراسات">نوت بوك وكراسات</option>
+            <option value="استيكرات">استيكرات</option>
+            <option value="لافتات وديكورات">لافتات وديكورات</option>
+            <option value="مطبوعات ورقية">مطبوعات ورقية</option>
+            <option value="أدوات مكتبية">أدوات مكتبية</option>
+            <option value="مجات">مجات</option>
+            <option value="تيشيرتات">تيشيرتات</option>
+            <option value="أخرى">أخرى</option>
+          </select>
+          <select
+            id="catalogUnitFilter"
+            onchange="renderCatalogList()"
+            class="w-full min-w-0 px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 text-[11px] font-bold text-slate-700 focus:outline-none focus:border-indigo-400"
+            aria-label="فلترة حسب وحدة البيع"
+          >
+            <option value="all">قطعة / دستة</option>
+            <option value="قطعة">قطعة فقط</option>
+            <option value="دستة">دستة فقط</option>
+          </select>
+        </div>
+        <div id="catalogFilterCount" class="text-[10px] text-slate-400 mb-1" aria-live="polite"></div>
+
+        <!-- Saved Items List -->
+        <div id="catalogListContainer" class="space-y-1.5 max-h-72 overflow-y-auto pr-1">
+          <!-- Populated via JS -->
+        </div>
+      </div>
+
+      <!-- JSON Backup & Restore Card -->
+      <div class="bg-white/95 backdrop-blur rounded-2xl shadow-lg border border-amber-200/80 p-4">
+        <div class="flex items-center gap-2 mb-2.5">
+          <span class="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">💾</span>
+          <div>
+            <h2 class="text-sm font-extrabold text-slate-900">النسخ الاحتياطي ونقل البيانات (JSON)</h2>
+            <p class="text-[11px] text-slate-500">تصدير أو استيراد الأصناف واللوجو وإعدادات الشركة</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <button
+            onclick="exportDatabaseJSON()"
+            class="py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-extrabold shadow-sm transition flex items-center justify-center gap-1.5"
+          >
+            <span>⬇️</span>
+            <span>تصدير JSON</span>
+          </button>
+          <label
+            for="jsonImportInput"
+            class="py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-extrabold shadow-sm transition flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <span>⬆️</span>
+            <span>استيراد JSON</span>
+          </label>
+          <input type="file" id="jsonImportInput" accept=".json,application/json" class="hidden" onchange="importDatabaseJSON(event)" />
+        </div>
+        <div class="mt-2 pt-2 border-t border-slate-100">
+          <label for="invoiceExcelImportInput" class="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-sm transition flex items-center justify-center gap-1.5 cursor-pointer">
+            <span>📊</span>
+            <span>استيراد فاتورة من Excel</span>
+          </label>
+          <input type="file" id="invoiceExcelImportInput" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" class="hidden" onchange="importInvoiceFromExcel(event)" />
+          <p class="mt-1.5 text-[10px] text-slate-500 text-center">يدعم ملفات Excel الصادرة من النظام أو الجداول التي تحتوي على الصنف والوحدة والعدد والسعر</p>
+        </div>
+      </div>
+
+    </aside>
+  </main>
+
+  <script>
+    // =========================================================================
+    // 1. STORAGE KEYS & APPLICATION STATE
+    // =========================================================================
+    const STORAGE_KEYS = {
+      BRAND: 'morty_inv_brand_v2',
+      CATALOG: 'morty_inv_catalog_v2',
+      CUSTOMERS: 'morty_inv_customers_v1',
+      LAST_INV_NUM: 'morty_inv_last_num_v2',
+      THEME: 'morty_inv_theme_v2',
+    };
+
+    let currentThemeMode = 'eco'; // 'eco' | 'luxury'
+    let brandSettings = {
+      name: 'مورتي ديزاين | Morty Design',
+      subtitle: 'لخدمات التصميم والطباعة والدعاية',
+      contact: 'القاهرة - مصر | هاتف: 01000000000',
+      logoBase64: '',
+    };
+
+    let savedCatalog = [
+      { id: 'p1', name: 'نوتة سلك A5 غلاف مقوى', category: 'نوت بوك وكراسات', unit: 'قطعة', price: 35 },
+      { id: 'p2', name: 'دستة أقلام جاف أزرق', category: 'أدوات مكتبية', unit: 'دستة', price: 60 },
+      { id: 'p3', name: 'بوستر إعلاني كوشيه A3', category: 'مطبوعات ورقية', unit: 'قطعة', price: 15 },
+    ];
+
+    let savedCustomers = [];
+
+    let invoiceRows = [
+      { id: 1, name: 'نوتة سلك A5 غلاف مقوى', unit: 'قطعة', count: 2, price: 35 },
+      { id: 2, name: '', unit: 'دستة', count: 1, price: 0 },
+    ];
+
+    // =========================================================================
+    // 2. INITIALIZATION
+    // =========================================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      loadFromLocalStorage();
+      setTodayDate();
+      renderInvoiceRows();
+      renderCatalogList();
+      recalculateTotals();
+      autoGrow(document.getElementById('brandNameInput'));
+    });
+
+    function setTodayDate() {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      document.getElementById('invoiceDateInput').value = `${yyyy}-${mm}-${dd}`;
+    }
+
+    function loadFromLocalStorage() {
+      try {
+        const storedBrand = localStorage.getItem(STORAGE_KEYS.BRAND);
+        if (storedBrand) {
+          brandSettings = { ...brandSettings, ...JSON.parse(storedBrand) };
+        }
+        applyBrandToUI();
+
+        const storedCatalog = localStorage.getItem(STORAGE_KEYS.CATALOG);
+        if (storedCatalog) {
+          savedCatalog = JSON.parse(storedCatalog).map((item) => ({ ...item, category: item.category || 'غير مصنف' }));
+        }
+
+        const storedCustomers = localStorage.getItem(STORAGE_KEYS.CUSTOMERS);
+        if (storedCustomers) {
+          savedCustomers = JSON.parse(storedCustomers).map((customer) => ({
+            id: customer.id || ('customer_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)),
+            name: customer.name || '',
+            phone: customer.phone || '',
+          }));
+        }
+        renderSavedCustomers();
+
+        const lastNum = parseInt(localStorage.getItem(STORAGE_KEYS.LAST_INV_NUM), 10);
+        if (!isNaN(lastNum)) {
+          document.getElementById('invoiceNumberInput').value = `INV-${lastNum + 1}`;
+        }
+
+        const savedTheme = localStorage.getItem(STORAGE_KEYS.THEME);
+        if (savedTheme === 'luxury' || savedTheme === 'eco') {
+          setInvoiceTheme(savedTheme, true);
+        } else {
+          setInvoiceTheme('eco', true);
+        }
+      } catch (e) {
+        console.error('Error loading local storage:', e);
+      }
+    }
+
+    // =========================================================================
+    // 3. THEME SWITCHER (ECO B&W vs LUXURY COLORFUL)
+    // =========================================================================
+    function setInvoiceTheme(mode, silent = false) {
+      currentThemeMode = mode;
+      localStorage.setItem(STORAGE_KEYS.THEME, mode);
+
+      const sheet = document.getElementById('invoiceSheet');
+      const btnEco = document.getElementById('btnThemeEco');
+      const btnLux = document.getElementById('btnThemeLuxury');
+      const badge = document.getElementById('modeStatusBadge');
+
+      if (mode === 'eco') {
+        sheet.classList.remove('theme-luxury');
+        sheet.classList.add('theme-eco');
+
+        btnEco.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-white text-slate-900 shadow';
+        btnLux.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 text-indigo-200 hover:text-white';
+
+        badge.className = 'px-2.5 py-0.5 rounded-lg bg-slate-900 text-white font-bold';
+        badge.textContent = '🖨️ وضع توفير الحبر (أبيض وأسود + لوجو ملوّن)';
+        if (!silent) showToast('تم التبديل لوضع توفير الحبر (أبيض وأسود)');
+      } else {
+        sheet.classList.remove('theme-eco');
+        sheet.classList.add('theme-luxury');
+
+        btnLux.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-gradient-to-r from-amber-400 to-orange-500 text-indigo-950 shadow';
+        btnEco.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 text-indigo-200 hover:text-white';
+
+        badge.className = 'px-2.5 py-0.5 rounded-lg bg-gradient-to-r from-indigo-700 to-purple-700 text-white font-bold';
+        badge.textContent = '✨ النسخة الفاخرة (ملوّنة بالكامل للحفظ)';
+        if (!silent) showToast('تم التبديل للنسخة الفاخرة الملوّنة');
+      }
+    }
+
+    // =========================================================================
+    // 4. BRAND & LOGO MANAGEMENT
+    // =========================================================================
+    function applyBrandToUI() {
+      document.getElementById('brandNameInput').value = brandSettings.name || '';
+      document.getElementById('brandSubtitleInput').value = brandSettings.subtitle || '';
+      document.getElementById('brandContactInput').value = brandSettings.contact || '';
+      document.getElementById('footerBrandCopy').textContent = brandSettings.name || 'مورتي ديزاين';
+
+      const img = document.getElementById('brandLogoImg');
+      const fallback = document.getElementById('defaultLogoBadge');
+      if (brandSettings.logoBase64) {
+        img.src = brandSettings.logoBase64;
+        img.classList.remove('hidden');
+        fallback.classList.add('hidden');
+      } else {
+        img.classList.add('hidden');
+        fallback.classList.remove('hidden');
+      }
+    }
+
+    function saveBrandSettings() {
+      brandSettings.name = document.getElementById('brandNameInput').value;
+      brandSettings.subtitle = document.getElementById('brandSubtitleInput').value;
+      brandSettings.contact = document.getElementById('brandContactInput').value;
+      document.getElementById('footerBrandCopy').textContent = brandSettings.name;
+      localStorage.setItem(STORAGE_KEYS.BRAND, JSON.stringify(brandSettings));
+    }
+
+    function handleLogoUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        brandSettings.logoBase64 = e.target.result;
+        applyBrandToUI();
+        saveBrandSettings();
+        showToast('تم تحديث اللوجو وحفظه بنجاح');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function autoGrow(el) {
+      if (!el) return;
+      el.style.height = 'auto';
+      el.style.height = el.scrollHeight + 'px';
+    }
+
+    // =========================================================================
+    // 5. INVOICE TABLE ROWS & ARROW SPINNERS
+    // =========================================================================
+    function renderInvoiceRows() {
+      const tbody = document.getElementById('invoiceTableBody');
+      tbody.innerHTML = '';
+
+      invoiceRows.forEach((row, index) => {
+        const lineTotal = (parseFloat(row.count) || 0) * (parseFloat(row.price) || 0);
+        const tr = document.createElement('tr');
+        tr.className = 'border-b group';
+
+        tr.innerHTML = `
+          <!-- الصنف (Multi-line wrapping, non-bold) -->
+          <td class="py-1.5 px-1.5 border-l align-middle">
+            <div class="flex items-start gap-1">
+              <button
+                onclick="removeInvoiceRow(${index})"
+                class="text-rose-500 hover:text-rose-700 font-bold text-xs px-1 pt-0.5 opacity-60 hover:opacity-100 no-print"
+                title="حذف الصنف"
+              >×</button>
+              <textarea
+                rows="1"
+                placeholder="اسم الصنف..."
+                oninput="autoGrow(this); updateRowField(${index}, 'name', this.value)"
+                class="w-full bg-transparent resize-none focus:outline-none font-normal text-xs leading-snug"
+              >${escapeHtml(row.name)}</textarea>
+            </div>
+          </td>
+
+          <!-- الكمية (قطعة / دستة) -->
+          <td class="py-1.5 px-1 border-l text-center align-middle">
+            <button
+              type="button"
+              onclick="toggleRowUnit(${index})"
+              class="unit-toggle-btn px-2 py-0.5 rounded-md text-[11px] font-bold transition cursor-pointer"
+              title="اضغط للتبديل بين قطعة ودستة"
+            >
+              ${escapeHtml(row.unit)}
+            </button>
+          </td>
+
+          <!-- العدد (مع أسهم زيادة ونقصان فوق وتحت) -->
+          <td class="py-1 px-1 border-l text-center align-middle">
+            <div class="inline-flex items-center justify-center border border-slate-300 rounded-lg bg-white/80 overflow-hidden">
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value="${row.count}"
+                oninput="updateRowField(${index}, 'count', this.value)"
+                class="w-9 text-center font-normal text-xs py-0.5 bg-transparent focus:outline-none"
+              />
+              <div class="flex flex-col border-r border-slate-300 bg-slate-100 no-print">
+                <button
+                  type="button"
+                  onclick="stepRowCount(${index}, 1)"
+                  class="px-1.5 py-0 text-[8px] leading-tight text-slate-700 hover:bg-indigo-600 hover:text-white transition"
+                  title="زيادة العدد"
+                >▲</button>
+                <button
+                  type="button"
+                  onclick="stepRowCount(${index}, -1)"
+                  class="px-1.5 py-0 text-[8px] leading-tight text-slate-700 hover:bg-indigo-600 hover:text-white border-t border-slate-300 transition"
+                  title="تقليل العدد"
+                >▼</button>
+              </div>
+            </div>
+          </td>
+
+          <!-- السعر -->
+          <td class="py-1.5 px-1 border-l text-center align-middle">
+            <input
+              type="number"
+              min="0"
+              step="any"
+              value="${row.price}"
+              oninput="updateRowField(${index}, 'price', this.value)"
+              class="w-full text-center font-normal text-xs bg-transparent focus:outline-none"
+            />
+          </td>
+
+          <!-- الإجمالي -->
+          <td id="rowTotal_${index}" class="py-1.5 px-1 text-center font-bold text-xs align-middle">
+            ${formatNumber(lineTotal)}
+          </td>
+        `;
+
+        tbody.appendChild(tr);
+        const ta = tr.querySelector('textarea');
+        if (ta) autoGrow(ta);
+      });
+    }
+
+    function addInvoiceRow(preset = null) {
+      invoiceRows.push({
+        id: Date.now() + Math.random(),
+        name: preset ? preset.name : '',
+        unit: preset ? preset.unit : 'قطعة',
+        count: 1,
+        price: preset ? Number(preset.price) : 0,
+      });
+      renderInvoiceRows();
+      recalculateTotals();
+    }
+
+    function removeInvoiceRow(index) {
+      if (invoiceRows.length <= 1) {
+        invoiceRows[0] = { id: Date.now(), name: '', unit: 'قطعة', count: 0, price: 0 };
+      } else {
+        invoiceRows.splice(index, 1);
+      }
+      renderInvoiceRows();
+      recalculateTotals();
+    }
+
+    function toggleRowUnit(index) {
+      invoiceRows[index].unit = invoiceRows[index].unit === 'قطعة' ? 'دستة' : 'قطعة';
+      renderInvoiceRows();
+    }
+
+    function stepRowCount(index, delta) {
+      const current = parseFloat(invoiceRows[index].count) || 0;
+      const next = Math.max(0, current + delta);
+      invoiceRows[index].count = next;
+      renderInvoiceRows();
+      recalculateTotals();
+    }
+
+    function updateRowField(index, field, value) {
+      if (field === 'count' || field === 'price') {
+        invoiceRows[index][field] = value === '' ? 0 : parseFloat(value) || 0;
+        const lineTotal = (parseFloat(invoiceRows[index].count) || 0) * (parseFloat(invoiceRows[index].price) || 0);
+        const cell = document.getElementById(`rowTotal_${index}`);
+        if (cell) cell.textContent = formatNumber(lineTotal);
+        recalculateTotals();
+      } else {
+        invoiceRows[index][field] = value;
+      }
+    }
+
+    function recalculateTotals() {
+      const subtotal = invoiceRows.reduce((acc, r) => {
+        return acc + (parseFloat(r.count) || 0) * (parseFloat(r.price) || 0);
+      }, 0);
+      const discount = parseFloat(document.getElementById('discountInput').value) || 0;
+      const grandTotal = Math.max(0, subtotal - discount);
+
+      document.getElementById('subtotalDisplay').textContent = `${formatNumber(subtotal)} ج.م`;
+      document.getElementById('grandTotalDisplay').textContent = `${formatNumber(grandTotal)} ج.م`;
+    }
+
+    // =========================================================================
+    // SAVED CUSTOMERS
+    // =========================================================================
+    function persistSavedCustomers() {
+      localStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(savedCustomers));
+    }
+
+    function renderSavedCustomers(selectedId = '') {
+      const select = document.getElementById('savedCustomerSelect');
+      if (!select) return;
+      const currentValue = selectedId || select.value || '';
+      const sorted = [...savedCustomers].sort((a, b) => (a.name || a.phone).localeCompare((b.name || b.phone), 'ar'));
+      select.innerHTML = '<option value="">اختار عميل محفوظ...</option>' + sorted.map((customer) => {
+        const label = `${customer.name || 'بدون اسم'}${customer.phone ? ' — ' + customer.phone : ''}`;
+        return `<option value="${escapeHtml(customer.id)}">${escapeHtml(label)}</option>`;
+      }).join('');
+      select.value = savedCustomers.some((customer) => customer.id === currentValue) ? currentValue : '';
+    }
+
+    function clearSavedCustomerSelection() {
+      const select = document.getElementById('savedCustomerSelect');
+      if (select) select.value = '';
+    }
+
+    function normalizeCustomerPhone(phone) {
+      return String(phone || '').replace(/[^0-9]/g, '');
+    }
+
+    function saveCurrentCustomer() {
+      const name = document.getElementById('customerNameInput').value.trim();
+      const phone = document.getElementById('customerPhoneInput').value.trim();
+      if (!name && !phone) {
+        showToast('اكتب اسم العميل أو رقم هاتفه أولاً');
+        return;
+      }
+
+      const normalizedPhone = normalizeCustomerPhone(phone);
+      const normalizedName = name.toLocaleLowerCase('ar').replace(/\s+/g, ' ').trim();
+      let existing = -1;
+      if (normalizedPhone) {
+        existing = savedCustomers.findIndex((customer) => normalizeCustomerPhone(customer.phone) === normalizedPhone);
+      }
+      if (existing === -1 && normalizedName) {
+        existing = savedCustomers.findIndex((customer) => (customer.name || '').toLocaleLowerCase('ar').replace(/\s+/g, ' ').trim() === normalizedName);
+      }
+
+      let customerId;
+      if (existing >= 0) {
+        savedCustomers[existing] = { ...savedCustomers[existing], name: name || savedCustomers[existing].name, phone: phone || savedCustomers[existing].phone };
+        customerId = savedCustomers[existing].id;
+        showToast('تم تحديث بيانات العميل المحفوظ');
+      } else {
+        customerId = 'customer_' + Date.now();
+        savedCustomers.unshift({ id: customerId, name, phone });
+        showToast('تم حفظ العميل في القائمة بنجاح');
+      }
+
+      persistSavedCustomers();
+      renderSavedCustomers(customerId);
+    }
+
+    function loadSavedCustomer(id) {
+      if (!id) return;
+      const customer = savedCustomers.find((item) => item.id === id);
+      if (!customer) return;
+      document.getElementById('customerNameInput').value = customer.name || '';
+      document.getElementById('customerPhoneInput').value = customer.phone || '';
+      const select = document.getElementById('savedCustomerSelect');
+      if (select) select.value = id;
+      showToast(`تم إدخال بيانات ${customer.name || 'العميل'} في الفاتورة`);
+    }
+
+    function deleteSelectedCustomer() {
+      const select = document.getElementById('savedCustomerSelect');
+      const id = select ? select.value : '';
+      if (!id) {
+        showToast('اختار عميلاً من القائمة أولاً');
+        return;
+      }
+      const customer = savedCustomers.find((item) => item.id === id);
+      if (!confirm(`حذف بيانات العميل "${customer?.name || customer?.phone || ''}" من القائمة المحفوظة؟`)) return;
+      savedCustomers = savedCustomers.filter((item) => item.id !== id);
+      persistSavedCustomers();
+      renderSavedCustomers();
+      showToast('تم حذف العميل من القائمة المحفوظة');
+    }
+
+    function newInvoice() {
+      const invInput = document.getElementById('invoiceNumberInput');
+      const numMatch = invInput.value.match(/\d+/);
+      if (numMatch) {
+        const nextNum = parseInt(numMatch[0], 10) + 1;
+        invInput.value = `INV-${nextNum}`;
+        localStorage.setItem(STORAGE_KEYS.LAST_INV_NUM, nextNum - 1);
+      }
+      document.getElementById('customerNameInput').value = '';
+      document.getElementById('customerPhoneInput').value = '';
+      clearSavedCustomerSelection();
+      document.getElementById('discountInput').value = '0';
+      setTodayDate();
+      invoiceRows = [{ id: Date.now(), name: '', unit: 'قطعة', count: 1, price: 0 }];
+      renderInvoiceRows();
+      recalculateTotals();
+      showToast('تم فتح فاتورة جديدة برقم تسلسلي جديد');
+    }
+
+    // =========================================================================
+    // 6. SAVED ITEMS CATALOG & JSON BACKUP / RESTORE
+    // =========================================================================
+    function saveNewCatalogItem(e) {
+      e.preventDefault();
+      const name = document.getElementById('presetNameInput').value.trim();
+      const category = document.getElementById('presetCategoryInput').value;
+      const unit = document.getElementById('presetUnitInput').value;
+      const price = parseFloat(document.getElementById('presetPriceInput').value) || 0;
+      if (!name || !category) return;
+
+      savedCatalog.unshift({
+        id: 'item_' + Date.now(),
+        name,
+        category,
+        unit,
+        price,
+      });
+
+      localStorage.setItem(STORAGE_KEYS.CATALOG, JSON.stringify(savedCatalog));
+      document.getElementById('presetNameInput').value = '';
+      document.getElementById('presetPriceInput').value = '';
+      renderCatalogList();
+      showToast(`تم حفظ "${name}" في قاعدة الأصناف`);
+    }
+
+    function renderCatalogList() {
+      const container = document.getElementById('catalogListContainer');
+      const query = (document.getElementById('catalogSearchInput').value || '').trim().toLowerCase();
+      const categoryFilter = document.getElementById('catalogCategoryFilter').value;
+      const unitFilter = document.getElementById('catalogUnitFilter').value;
+      document.getElementById('catalogCountBadge').textContent = savedCatalog.length;
+
+      const filtered = savedCatalog.filter((item) => {
+        const itemCategory = item.category || 'غير مصنف';
+        const matchesName = (item.name || '').toLowerCase().includes(query);
+        const matchesCategory = categoryFilter === 'all' || itemCategory === categoryFilter;
+        const matchesUnit = unitFilter === 'all' || item.unit === unitFilter;
+        return matchesName && matchesCategory && matchesUnit;
+      });
+
+      document.getElementById('catalogFilterCount').textContent = `يعرض ${filtered.length} من ${savedCatalog.length} صنف`;
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="text-center py-6 text-xs text-slate-400">لا توجد أصناف مطابقة للفلاتر المحددة</div>`;
+        return;
+      }
+
+      container.innerHTML = filtered
+        .map(
+          (item) => `
+          <div class="flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-50 hover:bg-indigo-50/80 border border-slate-200 transition">
+            <div class="min-w-0 flex-1">
+              <div class="text-xs font-bold text-slate-800 truncate">${escapeHtml(item.name)}</div>
+              <div class="flex flex-wrap items-center gap-1 mt-0.5 text-[10px] text-slate-500">
+                <span class="px-1.5 py-0.2 rounded bg-violet-100 text-violet-800 font-bold">${escapeHtml(item.category || 'غير مصنف')}</span>
+                <span class="px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-800 font-bold">${escapeHtml(item.unit)}</span>
+                <span class="font-bold text-emerald-700">${formatNumber(item.price)} ج.م</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+              <button
+                onclick="insertCatalogItemToInvoice('${item.id}')"
+                class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold transition"
+                title="إضافة للفاتورة"
+              >+ أضف</button>
+              <button
+                onclick="deleteCatalogItem('${item.id}')"
+                class="px-2 py-1 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-700 text-[11px] font-bold transition"
+                title="حذف من القائمة"
+              >🗑️</button>
+            </div>
+          </div>
+        `
+        )
+        .join('');
+    }
+
+    function insertCatalogItemToInvoice(id) {
+      const item = savedCatalog.find((x) => x.id === id);
+      if (!item) return;
+
+      // Replace first empty row if available, otherwise append
+      const emptyIdx = invoiceRows.findIndex((r) => !r.name.trim() && (parseFloat(r.price) || 0) === 0);
+      if (emptyIdx !== -1) {
+        invoiceRows[emptyIdx] = {
+          id: Date.now(),
+          name: item.name,
+          unit: item.unit,
+          count: 1,
+          price: Number(item.price),
+        };
+        renderInvoiceRows();
+        recalculateTotals();
+      } else {
+        addInvoiceRow(item);
+      }
+      showToast(`تم إدراج "${item.name}" في الفاتورة`);
+    }
+
+    function deleteCatalogItem(id) {
+      savedCatalog = savedCatalog.filter((x) => x.id !== id);
+      localStorage.setItem(STORAGE_KEYS.CATALOG, JSON.stringify(savedCatalog));
+      renderCatalogList();
+      showToast('تم حذف الصنف من القائمة المحفوظة');
+    }
+
+    function exportDatabaseJSON() {
+      const backupData = {
+        app: 'MortyDesign_A5_Invoice_System',
+        version: '3.0',
+        exportedAt: new Date().toISOString(),
+        brandSettings,
+        savedCatalog,
+        savedCustomers,
+      };
+      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json;charset=utf-8' });
+      const dateStr = new Date().toISOString().slice(0, 10);
+      triggerDownload(blob, `Morty_Invoice_Data_${dateStr}.json`);
+      showToast('تم تصدير ملف البيانات واللوجو (JSON) بنجاح');
+    }
+
+    function importDatabaseJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (parsed.brandSettings) {
+            brandSettings = { ...brandSettings, ...parsed.brandSettings };
+            localStorage.setItem(STORAGE_KEYS.BRAND, JSON.stringify(brandSettings));
+            applyBrandToUI();
+          }
+          if (Array.isArray(parsed.savedCatalog)) {
+            savedCatalog = parsed.savedCatalog.map((item) => ({ ...item, category: item.category || 'غير مصنف' }));
+            localStorage.setItem(STORAGE_KEYS.CATALOG, JSON.stringify(savedCatalog));
+            renderCatalogList();
+          }
+          if (Array.isArray(parsed.savedCustomers)) {
+            savedCustomers = parsed.savedCustomers.map((customer) => ({
+              id: customer.id || ('customer_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)),
+              name: customer.name || '',
+              phone: customer.phone || '',
+            }));
+            persistSavedCustomers();
+            renderSavedCustomers();
+          }
+          showToast('تم استيراد البيانات والأصناف والعملاء بنجاح!');
+        } catch (err) {
+          showToast('ملف JSON غير صالح، تأكد من اختيار الملف الصحيح');
+        }
+        event.target.value = '';
+      };
+      reader.readAsText(file);
+    }
+
+    // =========================================================================
+    // 7. EXCEL INVOICE IMPORT
+    // =========================================================================
+    function normalizeExcelHeader(value) {
+      return String(value == null ? '' : value)
+        .replace(/[\u0640]/g, '')
+        .replace(/[：:]/g, '')
+        .trim()
+        .toLocaleLowerCase('ar')
+        .replace(/\s+/g, ' ');
+    }
+
+    function parseExcelNumber(value) {
+      if (typeof value === 'number' && Number.isFinite(value)) return value;
+      let text = String(value == null ? '' : value).trim().replace(/[^0-9,.-]/g, '');
+      if (!text) return 0;
+      if (text.includes(',') && text.includes('.')) {
+        text = text.replace(/,/g, '');
+      } else if (text.includes(',')) {
+        const lastComma = text.lastIndexOf(',');
+        const decimalDigits = text.length - lastComma - 1;
+        text = decimalDigits > 0 && decimalDigits <= 2
+          ? text.slice(0, lastComma).replace(/,/g, '') + '.' + text.slice(lastComma + 1)
+          : text.replace(/,/g, '');
+      }
+      const parsed = Number.parseFloat(text);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    function normalizeImportedDate(value) {
+      if (!value) return '';
+      if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        const year = value.getFullYear();
+        const month = String(value.getMonth() + 1).padStart(2, '0');
+        const day = String(value.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
+      const raw = String(value).trim();
+      const iso = raw.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+      if (iso) return `${iso[1]}-${String(iso[2]).padStart(2, '0')}-${String(iso[3]).padStart(2, '0')}`;
+      const dmy = raw.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+      if (dmy) return `${dmy[3]}-${String(dmy[2]).padStart(2, '0')}-${String(dmy[1]).padStart(2, '0')}`;
+      const parsed = new Date(raw);
+      if (Number.isNaN(parsed.getTime())) return '';
+      return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`;
+    }
+
+    function getExcelValueByLabel(rows, labels) {
+      const wanted = labels.map(normalizeExcelHeader);
+      for (const row of rows) {
+        for (let i = 0; i < row.length; i++) {
+          const cell = normalizeExcelHeader(row[i]);
+          if (wanted.some((label) => cell === label || cell.startsWith(label + ' '))) {
+            for (let j = i + 1; j < row.length; j++) {
+              if (String(row[j] == null ? '' : row[j]).trim() !== '') return row[j];
+            }
+          }
+        }
+      }
+      return '';
+    }
+
+    function importInvoiceFromExcel(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      if (!window.XLSX) {
+        showToast('مكتبة Excel غير متاحة حالياً؛ تأكد من الاتصال بالإنترنت ثم أعد المحاولة');
+        event.target.value = '';
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (loadEvent) => {
+        try {
+          const workbook = window.XLSX.read(loadEvent.target.result, { type: 'array', cellDates: true });
+          const firstSheetName = workbook.SheetNames && workbook.SheetNames[0];
+          if (!firstSheetName) throw new Error('empty workbook');
+          const sheet = workbook.Sheets[firstSheetName];
+          const rows = window.XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false });
+          if (!rows.length) throw new Error('empty sheet');
+
+          let headerIndex = -1;
+          let itemIndex = -1;
+          let unitIndex = -1;
+          let countIndex = -1;
+          let priceIndex = -1;
+          for (let i = 0; i < Math.min(rows.length, 80); i++) {
+            const headers = rows[i].map(normalizeExcelHeader);
+            const findIndex = (aliases) => headers.findIndex((header) => aliases.includes(header));
+            const candidateItem = findIndex(['الصنف', 'اسم الصنف', 'المنتج', 'اسم المنتج', 'item', 'product', 'name']);
+            const candidatePrice = findIndex(['السعر', 'سعر الوحدة', 'price', 'unit price']);
+            if (candidateItem !== -1 && candidatePrice !== -1) {
+              headerIndex = i;
+              itemIndex = candidateItem;
+              priceIndex = candidatePrice;
+              unitIndex = findIndex(['الوحدة', 'وحدة', 'unit']);
+
+              // In this app's export, "الكمية" is the unit (قطعة/دستة)
+              // while "العدد" is the numeric quantity. Prefer that pairing.
+              const appUnitIndex = headers.indexOf('الكمية');
+              const appCountIndex = headers.indexOf('العدد');
+              if (appCountIndex !== -1) {
+                countIndex = appCountIndex;
+                if (unitIndex === -1 && appUnitIndex !== -1) unitIndex = appUnitIndex;
+              } else {
+                countIndex = findIndex(['العدد', 'الكمية', 'qty', 'quantity', 'count']);
+              }
+              if (unitIndex === countIndex) unitIndex = -1;
+              break;
+            }
+          }
+          if (headerIndex === -1 || itemIndex === -1 || priceIndex === -1 || countIndex === -1) {
+            throw new Error('unsupported columns');
+          }
+
+          const importedRows = [];
+          for (let i = headerIndex + 1; i < rows.length; i++) {
+            const row = rows[i] || [];
+            const name = String(row[itemIndex] == null ? '' : row[itemIndex]).trim();
+            if (!name) continue;
+            const normalizedName = normalizeExcelHeader(name);
+            if (normalizedName.includes('المجموع') || normalizedName.includes('الخصم') || normalizedName.includes('الاجمالي') || normalizedName.includes('الإجمالي') || normalizedName === 'total') continue;
+
+            const rawUnit = unitIndex >= 0 ? String(row[unitIndex] == null ? '' : row[unitIndex]).trim() : 'قطعة';
+            const unit = /دستة|dozen/i.test(rawUnit) ? 'دستة' : 'قطعة';
+            const count = parseExcelNumber(row[countIndex]);
+            const price = parseExcelNumber(row[priceIndex]);
+            importedRows.push({ id: Date.now() + Math.random(), name, unit, count: count || 0, price });
+          }
+          if (!importedRows.length) throw new Error('no invoice items');
+
+          if (!confirm('استيراد الفاتورة سيستبدل الأصناف والبيانات الحالية في الفاتورة. هل تريد المتابعة؟')) return;
+
+          const invoiceNumber = getExcelValueByLabel(rows, ['رقم الفاتورة', 'رقم الفاتوره']);
+          const invoiceDate = getExcelValueByLabel(rows, ['تاريخ الإصدار', 'التاريخ']);
+          const customerName = getExcelValueByLabel(rows, ['اسم العميل', 'العميل']);
+          const customerPhone = getExcelValueByLabel(rows, ['الهاتف', 'رقم الهاتف', 'تليفون']);
+          const discountValue = getExcelValueByLabel(rows, ['الخصم', 'discount']);
+          const notesValue = getExcelValueByLabel(rows, ['ملاحظات', 'notes']);
+
+          invoiceRows = importedRows;
+          if (String(invoiceNumber).trim()) document.getElementById('invoiceNumberInput').value = String(invoiceNumber).trim();
+          const normalizedDate = normalizeImportedDate(invoiceDate);
+          if (normalizedDate) document.getElementById('invoiceDateInput').value = normalizedDate;
+          if (String(customerName).trim()) document.getElementById('customerNameInput').value = String(customerName).trim();
+          if (String(customerPhone).trim()) document.getElementById('customerPhoneInput').value = String(customerPhone).trim();
+          if (discountValue !== '') document.getElementById('discountInput').value = String(parseExcelNumber(discountValue));
+          if (String(notesValue).trim()) document.getElementById('invoiceNotesInput').value = String(notesValue).trim();
+          clearSavedCustomerSelection();
+          renderInvoiceRows();
+          recalculateTotals();
+          showToast(`تم استيراد الفاتورة بنجاح (${importedRows.length} صنف)`);
+        } catch (error) {
+          console.error('Invoice Excel import error:', error);
+          showToast('تعذر قراءة الملف. استخدم ملفاً به أعمدة: الصنف، الوحدة، العدد، السعر');
+        } finally {
+          event.target.value = '';
+        }
+      };
+      reader.onerror = () => {
+        showToast('حدثت مشكلة أثناء قراءة ملف Excel');
+        event.target.value = '';
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    // =========================================================================
+    // 8. SNAPSHOT & EXPORT ENGINES (NATIVE CANVAS A5 PDF, EXCEL, WORD, IMAGE)
+    // =========================================================================
+    function getInvoiceSnapshot() {
+      const subtotal = invoiceRows.reduce((acc, r) => acc + (parseFloat(r.count) || 0) * (parseFloat(r.price) || 0), 0);
+      const discount = parseFloat(document.getElementById('discountInput').value) || 0;
+      const grandTotal = Math.max(0, subtotal - discount);
+
+      return {
+        brandName: document.getElementById('brandNameInput').value.trim() || 'مورتي ديزاين',
+        brandSubtitle: document.getElementById('brandSubtitleInput').value.trim(),
+        brandContact: document.getElementById('brandContactInput').value.trim(),
+        logoBase64: brandSettings.logoBase64 || '',
+        invoiceNumber: document.getElementById('invoiceNumberInput').value.trim() || 'INV-1001',
+        invoiceDate: document.getElementById('invoiceDateInput').value,
+        customerName: document.getElementById('customerNameInput').value.trim(),
+        customerPhone: document.getElementById('customerPhoneInput').value.trim(),
+        notes: document.getElementById('invoiceNotesInput').value.trim(),
+        rows: invoiceRows.filter((r) => r.name.trim() !== '' || (parseFloat(r.price) || 0) > 0),
+        subtotal,
+        discount,
+        grandTotal,
+      };
+    }
+
+    // 7A. Export A5 PDF via Native High-DPI Canvas Renderer (100% Connected Arabic Shaping)
+    async function exportToPDF(exportFormat = 'pdf') {
+      const snap = getInvoiceSnapshot();
+      const isEco = currentThemeMode === 'eco';
+      const modeLabel = isEco ? 'وضع توفير الحبر (B&W)' : 'النسخة الفاخرة (ملوّنة)';
+
+      const numericPart = parseInt(snap.invoiceNumber.replace(/\D/g, ''), 10);
+      if (!isNaN(numericPart)) {
+        localStorage.setItem(STORAGE_KEYS.LAST_INV_NUM, numericPart);
+      }
+
+      showToast(exportFormat === 'image'
+        ? `جاري تجهيز صورة الفاتورة بمقاس A5 (${modeLabel})...`
+        : `جاري إنشاء ملف PDF بمقاس A5 (${modeLabel})...`);
+
+      try {
+        if (document.fonts && document.fonts.ready) {
+          await document.fonts.ready;
+        }
+
+        // A5 Dimensions at 250 DPI (148mm x 210mm) -> 1480 x 2100 px
+        const W = 1480;
+        const H = 2100;
+        const marginX = 70; // 7mm symmetric left & right margins (exact centering)
+        const contentW = W - marginX * 2; // 1340px (134mm)
+        const fontFamily = "'Cairo', Tahoma, 'Segoe UI', Arial, sans-serif";
+
+        const canvas = document.createElement('canvas');
+        canvas.width = W;
+        canvas.height = H;
+        const ctx = canvas.getContext('2d');
+
+        const roundRect = (x, y, w, h, r, fill, stroke, lineWidth = 2) => {
+          ctx.beginPath();
+          ctx.roundRect(x, y, w, h, r);
+          if (fill) {
+            ctx.fillStyle = fill;
+            ctx.fill();
+          }
+          if (stroke) {
+            ctx.strokeStyle = stroke;
+            ctx.lineWidth = lineWidth;
+            ctx.stroke();
+          }
+        };
+
+        const drawWrappedText = (text, x, y, maxWidth, lineHeight, align = 'right') => {
+          const str = String(text || '');
+          if (!str) return lineHeight;
+          ctx.textAlign = align;
+          const paragraphs = str.split('\n');
+          let curY = y;
+          paragraphs.forEach((para) => {
+            const words = para.split(' ');
+            let line = '';
+            for (let n = 0; n < words.length; n++) {
+              const testLine = line ? line + ' ' + words[n] : words[n];
+              const metrics = ctx.measureText(testLine);
+              if (metrics.width > maxWidth && line) {
+                ctx.fillText(line, x, curY);
+                line = words[n];
+                curY += lineHeight;
+              } else {
+                line = testLine;
+              }
+            }
+            ctx.fillText(line, x, curY);
+            curY += lineHeight;
+          });
+          return curY - y;
+        };
+
+        // 1. White Page Background
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, W, H);
+        ctx.direction = 'rtl';
+        ctx.textBaseline = 'top';
+
+        // 2. Top Accent Bar
+        if (isEco) {
+          ctx.fillStyle = '#000000';
+          ctx.fillRect(marginX, 55, contentW, 8);
+        } else {
+          const topGrad = ctx.createLinearGradient(marginX, 0, marginX + contentW, 0);
+          topGrad.addColorStop(0, '#f59e0b');
+          topGrad.addColorStop(0.5, '#4f46e5');
+          topGrad.addColorStop(1, '#1e1b4b');
+          ctx.fillStyle = topGrad;
+          ctx.fillRect(marginX, 55, contentW, 18);
+        }
+
+        let curY = 95;
+
+        // 3. Header: Colored Logo (Right) + Brand Details + Invoice Meta Box (Left)
+        const logoBoxW = 280;
+        const logoBoxH = 160;
+        const logoX = W - marginX - logoBoxW;
+        roundRect(logoX, curY, logoBoxW, logoBoxH, 18, '#ffffff', isEco ? '#000000' : '#c7d2fe', 2.5);
+
+        if (snap.logoBase64) {
+          const img = new Image();
+          img.src = snap.logoBase64;
+          await new Promise((res) => {
+            img.onload = res;
+            img.onerror = res;
+          });
+          if (img.naturalWidth && img.naturalHeight) {
+            const maxLogoW = logoBoxW - 16;
+            const maxLogoH = logoBoxH - 16;
+            const logoScale = Math.min(maxLogoW / img.naturalWidth, maxLogoH / img.naturalHeight);
+            const drawW = img.naturalWidth * logoScale;
+            const drawH = img.naturalHeight * logoScale;
+            const drawX = logoX + (logoBoxW - drawW) / 2;
+            const drawY = curY + (logoBoxH - drawH) / 2;
+            ctx.drawImage(img, drawX, drawY, drawW, drawH);
+          }
+        } else {
+          const lg = ctx.createLinearGradient(logoX, curY, logoX + logoBoxW, curY + logoBoxH);
+          lg.addColorStop(0, '#1e1b4b');
+          lg.addColorStop(0.55, '#4f46e5');
+          lg.addColorStop(1, '#0ea5e9');
+          roundRect(logoX + 12, curY + 12, logoBoxW - 24, logoBoxH - 24, 16, lg, null);
+          ctx.fillStyle = '#ffffff';
+          ctx.font = `800 44px ${fontFamily}`;
+          ctx.textAlign = 'center';
+          ctx.fillText('MD', logoX + logoBoxW / 2, curY + 30);
+        }
+
+        // Meta Box on Left
+        const metaW = 360;
+        const metaH = 148;
+        const metaX = marginX;
+        roundRect(
+          metaX,
+          curY,
+          metaW,
+          metaH,
+          18,
+          isEco ? '#ffffff' : '#eef2ff',
+          isEco ? '#000000' : '#818cf8',
+          2.5
+        );
+        ctx.fillStyle = isEco ? '#000000' : '#312e81';
+        ctx.font = `800 28px ${fontFamily}`;
+        ctx.textAlign = 'center';
+        ctx.fillText('فاتورة مبيعات', metaX + metaW / 2, curY + 14);
+
+        ctx.beginPath();
+        ctx.moveTo(metaX + 20, curY + 54);
+        ctx.lineTo(metaX + metaW - 20, curY + 54);
+        ctx.strokeStyle = isEco ? '#000000' : '#c7d2fe';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.font = `700 24px ${fontFamily}`;
+        ctx.textAlign = 'right';
+        ctx.fillText('رقم:', metaX + metaW - 22, curY + 66);
+        ctx.fillText('التاريخ:', metaX + metaW - 22, curY + 104);
+
+        ctx.textAlign = 'left';
+        ctx.fillText(snap.invoiceNumber, metaX + 22, curY + 66);
+        ctx.fillText(snap.invoiceDate, metaX + 22, curY + 104);
+
+        // Brand Texts
+        const brandRightX = logoX - 24;
+        const brandMaxW = brandRightX - (metaX + metaW + 20);
+        ctx.fillStyle = isEco ? '#000000' : '#1e1b4b';
+        ctx.font = `800 32px ${fontFamily}`;
+        const h1 = drawWrappedText(snap.brandName, brandRightX, curY + 4, brandMaxW, 42, 'right');
+
+        ctx.fillStyle = isEco ? '#262626' : '#4338ca';
+        ctx.font = `600 24px ${fontFamily}`;
+        const h2 = drawWrappedText(snap.brandSubtitle, brandRightX, curY + 8 + h1, brandMaxW, 34, 'right');
+
+        ctx.fillStyle = '#525252';
+        ctx.font = `400 22px ${fontFamily}`;
+        const h3 = drawWrappedText(snap.brandContact, brandRightX, curY + 12 + h1 + h2, brandMaxW, 30, 'right');
+
+        curY += Math.max(metaH, h1 + h2 + h3 + 20) + 22;
+
+        // Divider Line
+        ctx.beginPath();
+        ctx.moveTo(marginX, curY);
+        ctx.lineTo(W - marginX, curY);
+        ctx.strokeStyle = isEco ? '#000000' : '#c7d2fe';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        curY += 24;
+
+        // 4. Customer Info Bar
+        const custH = 74;
+        roundRect(
+          marginX,
+          curY,
+          contentW,
+          custH,
+          16,
+          isEco ? '#ffffff' : '#f8fafc',
+          isEco ? '#000000' : '#c7d2fe',
+          2.5
+        );
+        ctx.fillStyle = '#000000';
+        ctx.font = `700 24px ${fontFamily}`;
+        ctx.textAlign = 'right';
+        ctx.fillText('العميل:', W - marginX - 24, curY + 20);
+        ctx.font = `400 24px ${fontFamily}`;
+        ctx.fillText(snap.customerName || 'عميل نقدي', W - marginX - 115, curY + 20);
+
+        ctx.font = `700 24px ${fontFamily}`;
+        ctx.fillText('الهاتف:', marginX + contentW / 2 - 20, curY + 20);
+        ctx.font = `400 24px ${fontFamily}`;
+        ctx.fillText(snap.customerPhone || '-', marginX + contentW / 2 - 110, curY + 20);
+
+        curY += custH + 26;
+
+        // 5. Items Table Header
+        const colWidths = [
+          Math.round(contentW * 0.40),
+          Math.round(contentW * 0.15),
+          Math.round(contentW * 0.13),
+          Math.round(contentW * 0.16),
+          contentW -
+            (Math.round(contentW * 0.40) +
+              Math.round(contentW * 0.15) +
+              Math.round(contentW * 0.13) +
+              Math.round(contentW * 0.16)),
+        ];
+        const headers = ['الصنف', 'الكمية', 'العدد', 'السعر', 'الإجمالي'];
+        const thH = 62;
+
+        if (isEco) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(marginX, curY, contentW, thH);
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 3;
+          ctx.strokeRect(marginX, curY, contentW, thH);
+          ctx.fillStyle = '#000000';
+        } else {
+          const thGrad = ctx.createLinearGradient(marginX, 0, marginX + contentW, 0);
+          thGrad.addColorStop(0, '#3730a3');
+          thGrad.addColorStop(1, '#1e1b4b');
+          ctx.fillStyle = thGrad;
+          ctx.fillRect(marginX, curY, contentW, thH);
+          ctx.fillStyle = '#ffffff';
+        }
+
+        ctx.font = `700 24px ${fontFamily}`;
+        let colX = W - marginX;
+        headers.forEach((hText, idx) => {
+          const cw = colWidths[idx];
+          if (idx === 0) {
+            ctx.textAlign = 'right';
+            ctx.fillText(hText, colX - 18, curY + 16);
+          } else {
+            ctx.textAlign = 'center';
+            ctx.fillText(hText, colX - cw / 2, curY + 16);
+          }
+          if (idx > 0) {
+            ctx.beginPath();
+            ctx.moveTo(colX, curY);
+            ctx.lineTo(colX, curY + thH);
+            ctx.strokeStyle = isEco ? '#000000' : '#4338ca';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          }
+          colX -= cw;
+        });
+
+        curY += thH;
+
+        // 6. Items Table Rows
+        const rowsToDraw = snap.rows.length > 0 ? snap.rows : invoiceRows;
+        rowsToDraw.forEach((r, rIdx) => {
+          ctx.font = `400 23px ${fontFamily}`;
+          const itemName = r.name || '—';
+          const words = itemName.split(' ');
+          let testLine = '';
+          let lineCount = 1;
+          const maxItemW = colWidths[0] - 32;
+          words.forEach((w) => {
+            const candidate = testLine ? testLine + ' ' + w : w;
+            if (ctx.measureText(candidate).width > maxItemW && testLine) {
+              lineCount++;
+              testLine = w;
+            } else {
+              testLine = candidate;
+            }
+          });
+          const rowH = Math.max(58, lineCount * 32 + 24);
+
+          ctx.fillStyle = !isEco && rIdx % 2 === 1 ? '#f8fafc' : '#ffffff';
+          ctx.fillRect(marginX, curY, contentW, rowH);
+          ctx.strokeStyle = isEco ? '#404040' : '#cbd5e1';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(marginX, curY, contentW, rowH);
+
+          let cx = W - marginX;
+          ctx.fillStyle = '#000000';
+          ctx.font = `400 23px ${fontFamily}`;
+          drawWrappedText(itemName, cx - 16, curY + 14, maxItemW, 32, 'right');
+
+          const vals = [
+            r.unit || 'قطعة',
+            String(r.count ?? 0),
+            formatNumber(r.price),
+            formatNumber((parseFloat(r.count) || 0) * (parseFloat(r.price) || 0)),
+          ];
+
+          cx -= colWidths[0];
+          vals.forEach((val, vIdx) => {
+            const cw = colWidths[vIdx + 1];
+            ctx.beginPath();
+            ctx.moveTo(cx, curY);
+            ctx.lineTo(cx, curY + rowH);
+            ctx.strokeStyle = isEco ? '#404040' : '#cbd5e1';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.font = vIdx === 3 ? `700 23px ${fontFamily}` : `400 23px ${fontFamily}`;
+            ctx.textAlign = 'center';
+            ctx.fillText(val, cx - cw / 2, curY + (rowH - 26) / 2);
+            cx -= cw;
+          });
+
+          curY += rowH;
+        });
+
+        curY += 32;
+
+        // 7. Footer Boxes: Notes (Right) & Totals (Left)
+        const boxH = 215;
+        const totalsW = 470;
+        const notesW = contentW - totalsW - 26;
+
+        roundRect(
+          W - marginX - notesW,
+          curY,
+          notesW,
+          boxH,
+          18,
+          isEco ? '#ffffff' : '#fffbeb',
+          isEco ? '#000000' : '#fde68a',
+          2.5
+        );
+        ctx.fillStyle = '#000000';
+        ctx.font = `700 23px ${fontFamily}`;
+        ctx.textAlign = 'right';
+        ctx.fillText('ملاحظات:', W - marginX - 22, curY + 18);
+
+        ctx.font = `400 22px ${fontFamily}`;
+        drawWrappedText(snap.notes, W - marginX - 22, curY + 54, notesW - 44, 30, 'right');
+
+        ctx.beginPath();
+        ctx.moveTo(W - marginX - notesW + 22, curY + boxH - 52);
+        ctx.lineTo(W - marginX - 22, curY + boxH - 52);
+        ctx.strokeStyle = '#a3a3a3';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.fillStyle = '#525252';
+        ctx.font = `400 20px ${fontFamily}`;
+        ctx.fillText('توقيع المستلم: ....................................', W - marginX - 22, curY + boxH - 40);
+
+        roundRect(
+          marginX,
+          curY,
+          totalsW,
+          boxH,
+          18,
+          isEco ? '#ffffff' : '#eef2ff',
+          isEco ? '#000000' : '#a5b4fc',
+          2.5
+        );
+        ctx.fillStyle = '#000000';
+        ctx.font = `700 24px ${fontFamily}`;
+        ctx.textAlign = 'right';
+        ctx.fillText('المجموع:', marginX + totalsW - 24, curY + 22);
+        ctx.fillText('الخصم:', marginX + totalsW - 24, curY + 68);
+
+        ctx.textAlign = 'left';
+        ctx.fillText(`${formatNumber(snap.subtotal)} ج.م`, marginX + 24, curY + 22);
+        ctx.font = `400 24px ${fontFamily}`;
+        ctx.fillText(`${formatNumber(snap.discount)} ج.م`, marginX + 24, curY + 68);
+
+        const pillY = curY + 122;
+        const pillH = 68;
+        if (isEco) {
+          ctx.beginPath();
+          ctx.moveTo(marginX + 20, pillY);
+          ctx.lineTo(marginX + totalsW - 20, pillY);
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+          ctx.fillStyle = '#000000';
+        } else {
+          const pGrad = ctx.createLinearGradient(marginX + 18, 0, marginX + totalsW - 18, 0);
+          pGrad.addColorStop(0, '#4338ca');
+          pGrad.addColorStop(1, '#1e1b4b');
+          roundRect(marginX + 18, pillY, totalsW - 36, pillH, 14, pGrad, null);
+          ctx.fillStyle = '#ffffff';
+        }
+
+        ctx.font = `800 28px ${fontFamily}`;
+        ctx.textAlign = 'right';
+        ctx.fillText('الإجمالي:', marginX + totalsW - 32, pillY + 18);
+
+        ctx.fillStyle = isEco ? '#000000' : '#fcd34d';
+        ctx.textAlign = 'left';
+        ctx.fillText(`${formatNumber(snap.grandTotal)} ج.م`, marginX + 32, pillY + 18);
+
+        // 8. Bottom Stamp
+        const stampY = H - 75;
+        ctx.beginPath();
+        ctx.moveTo(marginX, stampY - 14);
+        ctx.lineTo(W - marginX, stampY - 14);
+        ctx.strokeStyle = '#d4d4d4';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.fillStyle = '#525252';
+        ctx.font = `700 20px ${fontFamily}`;
+        ctx.textAlign = 'right';
+        ctx.fillText(snap.brandName, W - marginX, stampY);
+        ctx.textAlign = 'left';
+        ctx.fillText('نظام الفواتير السريع (A5)', marginX, stampY);
+
+        // 9. Export from this exact A5 canvas for both PNG and PDF.
+        // This keeps the image pixel-identical to the PDF layout and avoids
+        // browser form-control rendering/vertical alignment differences.
+        if (exportFormat === 'image') {
+          const imageBlob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+          if (!imageBlob) throw new Error('PNG encoding failed');
+          triggerDownload(imageBlob, `${getInvoiceFileBaseName(snap)}.png`);
+          showToast('تم حفظ صورة الفاتورة PNG بنفس مقاسات وتصميم PDF');
+          return;
+        }
+
+        const imgData = canvas.toDataURL('image/png');
+        const filename = `${getInvoiceFileBaseName(snap)}.pdf`;
+        const JsPDFCtor = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+
+        if (JsPDFCtor) {
+          const pdf = new JsPDFCtor({ orientation: 'portrait', unit: 'mm', format: 'a5' });
+          pdf.addImage(imgData, 'PNG', 0, 0, 148, 210);
+          pdf.save(filename);
+          showToast(`تم حفظ ملف PDF (${modeLabel}) بحروف عربية متصلة 100%!`);
+        } else {
+          window.print();
+        }
+      } catch (err) {
+        console.error(err);
+        if (exportFormat === 'image') {
+          showToast('تعذر تصدير الصورة. حاول مرة أخرى بعد تحميل الخطوط والصفحة بالكامل');
+        } else {
+          window.print();
+        }
+      }
+    }
+
+    // 7B. Export Excel
+    function exportToExcel() {
+      const snap = getInvoiceSnapshot();
+      const rowsToExport = snap.rows.length > 0 ? snap.rows : invoiceRows;
+
+      if (typeof window.XLSX !== 'undefined') {
+        const wsData = [
+          [snap.brandName],
+          [snap.brandSubtitle, snap.brandContact],
+          [],
+          ['رقم الفاتورة:', snap.invoiceNumber, '', 'تاريخ الإصدار:', snap.invoiceDate],
+          ['اسم العميل:', snap.customerName, '', 'الهاتف:', snap.customerPhone],
+          ['ملاحظات:', snap.notes],
+          [],
+          ['#', 'الصنف', 'الكمية', 'العدد', 'السعر', 'الإجمالي'],
+        ];
+
+        rowsToExport.forEach((r, idx) => {
+          const lineTotal = (parseFloat(r.count) || 0) * (parseFloat(r.price) || 0);
+          wsData.push([idx + 1, r.name, r.unit, parseFloat(r.count) || 0, parseFloat(r.price) || 0, lineTotal]);
+        });
+
+        wsData.push([]);
+        wsData.push(['', '', '', '', 'المجموع:', snap.subtotal]);
+        wsData.push(['', '', '', '', 'الخصم:', snap.discount]);
+        wsData.push(['', '', '', '', 'الإجمالي النهائي:', snap.grandTotal]);
+
+        const wb = window.XLSX.utils.book_new();
+        const ws = window.XLSX.utils.aoa_to_sheet(wsData);
+        ws['!views'] = [{ rightToLeft: true }];
+        ws['!cols'] = [{ wch: 5 }, { wch: 32 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 14 }];
+
+        window.XLSX.utils.book_append_sheet(wb, ws, 'فاتورة A5');
+        window.XLSX.writeFile(wb, `${getInvoiceFileBaseName(snap)}.xlsx`);
+        showToast('تم تصدير ملف Excel بنجاح');
+      } else {
+        const htmlExcel = `
+          <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" dir="rtl">
+          <head><meta charset="UTF-8" /></head>
+          <body style="font-family: Tahoma, Arial, sans-serif; direction: rtl;">
+            <table border="1" style="border-collapse: collapse; width: 100%; text-align: right;">
+              <tr><th colspan="6" style="font-size: 16px; padding: 8px;">${escapeHtml(snap.brandName)}</th></tr>
+              <tr><td><b>رقم الفاتورة:</b></td><td>${escapeHtml(snap.invoiceNumber)}</td><td><b>التاريخ:</b></td><td colspan="3">${escapeHtml(snap.invoiceDate)}</td></tr>
+              <tr><td><b>العميل:</b></td><td>${escapeHtml(snap.customerName)}</td><td><b>الهاتف:</b></td><td colspan="3">${escapeHtml(snap.customerPhone)}</td></tr>
+              <tr><td><b>ملاحظات:</b></td><td colspan="5">${escapeHtml(snap.notes)}</td></tr>
+              <tr style="font-weight: bold;"><th>#</th><th>الصنف</th><th>الكمية</th><th>العدد</th><th>السعر</th><th>الإجمالي</th></tr>
+              ${rowsToExport
+                .map((r, i) => {
+                  const tot = (parseFloat(r.count) || 0) * (parseFloat(r.price) || 0);
+                  return `<tr><td>${i + 1}</td><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.unit)}</td><td>${r.count}</td><td>${r.price}</td><td>${tot.toFixed(2)}</td></tr>`;
+                })
+                .join('')}
+              <tr><td colspan="5"><b>المجموع:</b></td><td>${snap.subtotal.toFixed(2)}</td></tr>
+              <tr><td colspan="5"><b>الخصم:</b></td><td>${snap.discount.toFixed(2)}</td></tr>
+              <tr><td colspan="5"><b>الإجمالي النهائي:</b></td><td><b>${snap.grandTotal.toFixed(2)} ج.م</b></td></tr>
+            </table>
+          </body>
+          </html>
+        `;
+        const blob = new Blob(['\ufeff' + htmlExcel], { type: 'application/vnd.ms-excel;charset=utf-8' });
+        triggerDownload(blob, `${getInvoiceFileBaseName(snap)}.xls`);
+        showToast('تم تصدير ملف Excel بنجاح');
+      }
+    }
+
+    // 7C. Export Word (.doc) configured specifically for A5 Page Size
+    function exportToWord() {
+      const snap = getInvoiceSnapshot();
+      const rowsToExport = snap.rows.length > 0 ? snap.rows : invoiceRows;
+      const isEco = currentThemeMode === 'eco';
+
+      const logoHtml = snap.logoBase64
+        ? `<img src="${snap.logoBase64}" style="max-width:105px;max-height:64px;width:auto;height:auto;object-fit:contain;display:block;" />`
+        : `<div style="width:95px;height:58px;background:#312e81;color:#fff;font-size:20px;font-weight:bold;text-align:center;line-height:58px;border-radius:10px;">MD</div>`;
+
+      const thStyle = isEco
+        ? 'background-color: #ffffff; color: #000000; border: 1.5px solid #000000; padding: 6px; font-size: 11pt;'
+        : 'background-color: #1e1b4b; color: #ffffff; border: 1px solid #1e1b4b; padding: 6px; font-size: 11pt;';
+
+      const wordContent = `
+        <html xmlns:o="urn:schemas-microsoft-com:office:office"
+              xmlns:w="urn:schemas-microsoft-com:office:word"
+              xmlns="http://www.w3.org/TR/REC-html40" dir="rtl">
+        <head>
+          <meta charset="UTF-8" />
+          <title>فاتورة A5 - ${escapeHtml(snap.invoiceNumber)}</title>
+          <style>
+            @page Section1 {
+              size: 419.55pt 595.3pt;
+              margin: 0.8cm;
+              mso-header-margin: 20pt;
+              mso-footer-margin: 20pt;
+            }
+            div.Section1 { page: Section1; }
+            body { font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; color: #000000; font-size: 11pt; }
+            table { border-collapse: collapse; width: 100%; }
+            .items-table td { padding: 5px 6px; border: 1px solid #000000; font-size: 10.5pt; text-align: center; }
+            .items-table td.item-name { text-align: right; font-weight: normal; }
+          </style>
+        </head>
+        <body>
+          <div class="Section1">
+            <table style="border-bottom: 2px solid #000000; margin-bottom: 10px;">
+              <tr>
+                <td style="width: 110px; vertical-align: middle;">${logoHtml}</td>
+                <td style="vertical-align: middle;">
+                  <div style="font-size: 14pt; font-weight: bold;">${escapeHtml(snap.brandName)}</div>
+                  <div style="font-size: 9.5pt;">${escapeHtml(snap.brandSubtitle)}</div>
+                  <div style="font-size: 9pt;">${escapeHtml(snap.brandContact)}</div>
+                </td>
+                <td style="width: 145px; border: 1px solid #000000; padding: 6px; font-size: 9.5pt;">
+                  <div style="font-weight: bold; text-align: center; border-bottom: 1px solid #000000; margin-bottom: 4px;">فاتورة مبيعات</div>
+                  <div><b>رقم:</b> ${escapeHtml(snap.invoiceNumber)}</div>
+                  <div><b>التاريخ:</b> ${escapeHtml(snap.invoiceDate)}</div>
+                </td>
+              </tr>
+            </table>
+
+            <table style="border: 1px solid #000000; margin-bottom: 10px; font-size: 10pt;">
+              <tr>
+                <td style="padding: 5px;"><b>العميل:</b> ${escapeHtml(snap.customerName)}</td>
+                <td style="padding: 5px;"><b>الهاتف:</b> ${escapeHtml(snap.customerPhone || '-')}</td>
+              </tr>
+            </table>
+
+            <table class="items-table" style="margin-bottom: 12px;">
+              <thead>
+                <tr>
+                  <th style="${thStyle} width: 25px;">#</th>
+                  <th style="${thStyle}">الصنف</th>
+                  <th style="${thStyle} width: 55px;">الكمية</th>
+                  <th style="${thStyle} width: 45px;">العدد</th>
+                  <th style="${thStyle} width: 65px;">السعر</th>
+                  <th style="${thStyle} width: 75px;">الإجمالي</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsToExport
+                  .map((r, i) => {
+                    const tot = (parseFloat(r.count) || 0) * (parseFloat(r.price) || 0);
+                    return `
+                      <tr>
+                        <td>${i + 1}</td>
+                        <td class="item-name">${escapeHtml(r.name)}</td>
+                        <td>${escapeHtml(r.unit)}</td>
+                        <td>${r.count}</td>
+                        <td>${Number(r.price).toFixed(2)}</td>
+                        <td><b>${tot.toFixed(2)}</b></td>
+                      </tr>
+                    `;
+                  })
+                  .join('')}
+              </tbody>
+            </table>
+
+            <table style="width: 100%; font-size: 10pt;">
+              <tr>
+                <td style="vertical-align: top; border: 1px solid #000000; padding: 6px;">
+                  <b>ملاحظات:</b> ${escapeHtml(snap.notes)}
+                </td>
+                <td style="width: 170px; border: 1px solid #000000; padding: 6px;">
+                  <div><b>المجموع:</b> ${snap.subtotal.toFixed(2)} ج.م</div>
+                  <div><b>الخصم:</b> ${snap.discount.toFixed(2)} ج.م</div>
+                  <div style="border-top: 1.5px solid #000000; margin-top: 4px; padding-top: 4px; font-size: 11.5pt;">
+                    <b>الإجمالي: ${snap.grandTotal.toFixed(2)} ج.م</b>
+                  </div>
+                </td>
+              </tr>
+            </table>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const blob = new Blob(['\ufeff', wordContent], { type: 'application/msword;charset=utf-8' });
+      triggerDownload(blob, `${getInvoiceFileBaseName(snap)}.doc`);
+      showToast('تم تصدير ملف Word بمقاس A5 بنجاح!');
+    }
+
+    // 8D. Export PNG using the same native A5 canvas renderer as PDF.
+    // The PNG is therefore identical in size, text positioning and layout.
+    async function exportToImage() {
+      await exportToPDF('image');
+    }
+
+    function sanitizeFilenamePart(value, fallback) {
+      const cleaned = String(value || '')
+        .trim()
+        .replace(/[\\/:*?"<>|\u0000-\u001F]/g, '-')
+        .replace(/\s+/g, ' ')
+        .replace(/[. ]+$/g, '')
+        .slice(0, 90);
+      return cleaned || fallback;
+    }
+
+    function getInvoiceFileBaseName(snapshot) {
+      const datePart = sanitizeFilenamePart(snapshot.invoiceDate || new Date().toISOString().slice(0, 10), 'بدون تاريخ');
+      const customerPart = sanitizeFilenamePart(snapshot.customerName, 'بدون اسم العميل');
+      return `${datePart} - ${customerPart}`;
+    }
+
+    // =========================================================================
+    // 9. UTILITIES
+    // =========================================================================
+    function triggerDownload(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function formatNumber(num) {
+      const val = Number(num) || 0;
+      return val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function showToast(message) {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = 'pointer-events-auto px-3.5 py-2.5 rounded-xl shadow-lg bg-gradient-to-r from-indigo-950 to-purple-900 text-white border border-indigo-500 text-xs font-bold transition-all duration-300 transform translate-y-2 opacity-0';
+      toast.textContent = message;
+
+      container.appendChild(toast);
+      requestAnimationFrame(() => toast.classList.remove('translate-y-2', 'opacity-0'));
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 2600);
+    }
+  </script>
+</body>
+</html>
